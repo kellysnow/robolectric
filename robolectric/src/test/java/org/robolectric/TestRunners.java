@@ -35,23 +35,12 @@ public class TestRunners {
       Locale.setDefault(Locale.ENGLISH);
     }
 
-    protected TestRunnerForApiVersion createTestRunner(Integer integer) throws InitializationError {
-      return new DefaultRunnerWithApiVersion(getTestClass().getJavaClass(), integer);
-    }
-
-    private static class DefaultRunnerWithApiVersion extends TestRunnerForApiVersion {
-
-      DefaultRunnerWithApiVersion(Class<?> type, Integer apiVersion) throws InitializationError {
-        super(type, apiVersion);
-      }
-
-      @Override
-      protected AndroidManifest getAppManifest(Config config) {
-        Properties properties = new Properties();
-        properties.put("manifest", "src/test/resources/TestAndroidManifest.xml");
-        return super.getAppManifest(
-            new Config.Implementation(config, Config.Implementation.fromProperties(properties)));
-      }
+    @Override
+    protected AndroidManifest getAppManifest(Config config) {
+      Properties properties = new Properties();
+      properties.put("manifest", "src/test/resources/TestAndroidManifest.xml");
+      return super.getAppManifest(
+          new Config.Implementation(config, Config.Implementation.fromProperties(properties)));
     }
   }
 }

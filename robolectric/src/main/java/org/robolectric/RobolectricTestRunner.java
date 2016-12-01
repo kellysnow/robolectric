@@ -69,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeSet;
 
 import static com.google.common.collect.Lists.reverse;
 
@@ -80,6 +81,8 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
   private static final String CONFIG_PROPERTIES = "robolectric.properties";
   private static final Map<Pair<AndroidManifest, SdkConfig>, ResourceLoader> resourceLoadersCache = new HashMap<>();
   private static final Map<ManifestIdentifier, AndroidManifest> appManifestsCache = new HashMap<>();
+  private final Set<Integer> supportedApis;
+  private final Properties properties;
 
   private TestLifecycle<Application> testLifecycle;
   private DependencyResolver dependencyResolver;
@@ -104,7 +107,14 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
    * @throws InitializationError if junit says so
    */
   public RobolectricTestRunner(final Class<?> testClass) throws InitializationError {
+    this(testClass, SdkConfig.getSupportedApis(), System.getProperties());
+  }
+
+  // visible for testing
+  RobolectricTestRunner(final Class<?> testClass, Set<Integer> supportedApis, Properties properties) throws InitializationError {
     super(testClass);
+    this.supportedApis = supportedApis;
+    this.properties = properties;
   }
 
   @SuppressWarnings("unchecked")
@@ -184,6 +194,37 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
     };
   }
 
+  @Override
+  protected List<FrameworkMethod> getChildren() {
+    List<FrameworkMethod> children = new ArrayList<>();
+    for (FrameworkMethod frameworkMethod : super.getChildren()) {
+      for (final Integer apiLevel : new TreeSet<>(filterSupportedApis(supportedApis, properties))) {
+        Config config = getConfig(frameworkMethod.getMethod());
+        if (shouldRunApiVersion(config, apiLevel)) {
+          children.add(new RobolectricFrameworkMethod(frameworkMethod.getMethod(), apiLevel, config));
+        }
+      }
+    }
+    return children;
+  }
+
+  @NotNull
+  private static Set<Integer> filterSupportedApis(Set<Integer> supportedApis, Properties properties) {
+    String overrideSupportedApis = properties.getProperty("robolectric.enabledApis");
+    if (overrideSupportedApis == null || overrideSupportedApis.isEmpty()) {
+      return supportedApis;
+    } else {
+      Set<Integer> filteredApis = new HashSet<>();
+      for (String s : overrideSupportedApis.split(",")) {
+        int apiLevel = Integer.parseInt(s);
+        if (supportedApis.contains(apiLevel)) {
+          filteredApis.add(apiLevel);
+        }
+      }
+      return filteredApis;
+    }
+  }
+
   private static void invokeAfterClass(final Class<?> clazz) throws Throwable {
     final TestClass testClass = new TestClass(clazz);
     final List<FrameworkMethod> afters = testClass.getAnnotatedMethods(AfterClass.class);
@@ -194,18 +235,19 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
 
   @Override
   protected void runChild(FrameworkMethod method, RunNotifier notifier) {
+    RobolectricFrameworkMethod roboMethod = (RobolectricFrameworkMethod) method;
     Description description = describeChild(method);
     EachTestNotifier eachNotifier = new EachTestNotifier(notifier, description);
 
-    final Config config = getConfig(method.getMethod());
+    Config config = roboMethod.config;
     if (shouldIgnore(method, config)) {
       eachNotifier.fireTestIgnored();
-    } else if(shouldRunApiVersion(config)) {
+    } else {
       eachNotifier.fireTestStarted();
       try {
         AndroidManifest appManifest = getAppManifest(config);
         InstrumentingClassLoaderFactory instrumentingClassLoaderFactory = new InstrumentingClassLoaderFactory(createClassLoaderConfig(config), getJarResolver());
-        SdkEnvironment sdkEnvironment = instrumentingClassLoaderFactory.getSdkEnvironment(new SdkConfig(pickSdkVersion(config, appManifest)));
+        SdkEnvironment sdkEnvironment = instrumentingClassLoaderFactory.getSdkEnvironment(new SdkConfig(pickSdkVersion(method, config, appManifest)));
 
         EmptyResourceLoader sdkResourceLoader = new EmptyResourceLoader("android", new ResourceExtractor(new ResourcePath(android.R.class, "android", null, null)));
 
@@ -220,8 +262,30 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
     }
   }
 
-  protected boolean shouldRunApiVersion(Config config) {
-    return true;
+  protected boolean shouldRunApiVersion(Config config, int apiLevel) {
+    // If no SDK range or set of SDKs is specified default to running all supported APIs
+    if (config.minSdk() == -1 && config.maxSdk() == -1 && config.sdk().length == 0) {
+      return true;
+    }
+
+    // For SDK ranges
+    if (config.minSdk() != -1 || config.maxSdk() != -1) {
+      if (config.minSdk() <= apiLevel && config.maxSdk() == -1) {
+        return true;
+      } else if (config.minSdk() == -1 && config.maxSdk() >= apiLevel) {
+        return true;
+      } else if (config.minSdk() <= apiLevel && config.maxSdk() >= apiLevel) {
+        return true;
+      }
+    }
+
+    // For SDK groups
+    for (int sdk : config.sdk()) {
+      if (sdk == apiLevel) {
+        return true;
+      }
+    }
+    return false;
   }
 
   protected boolean shouldIgnore(FrameworkMethod method, Config config) {
@@ -247,7 +311,7 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
         final Method bootstrappedMethod;
         try {
           //noinspection unchecked
-          bootstrappedMethod = bootstrappedTestClass.getMethod(method.getName());
+          bootstrappedMethod = bootstrappedTestClass.getMethod(method.getMethod().getName());
         } catch (NoSuchMethodException e) {
           throw new RuntimeException(e);
         }
@@ -264,7 +328,7 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
             parallelUniverseInterface.setSdkConfig(sdkEnvironment.getSdkConfig());
             parallelUniverseInterface.resetStaticState(config);
 
-            int sdkVersion = pickSdkVersion(config, appManifest);
+            int sdkVersion = pickSdkVersion(method, config, appManifest);
             Class<?> androidBuildVersionClass = sdkEnvironment.bootstrappedClass(Build.VERSION.class);
             ReflectionHelpers.setStaticField(androidBuildVersionClass, "SDK_INT", sdkVersion);
             SdkConfig sdkConfig = new SdkConfig(sdkVersion);
@@ -498,14 +562,16 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
     return classHandler;
   }
 
-  protected int pickSdkVersion(Config config, AndroidManifest manifest) {
-    if (config != null && config.sdk().length > 1) {
-      throw new IllegalArgumentException("RobolectricTestRunner does not support multiple values for @Config.sdk");
-    } else if (config != null && config.sdk().length == 1) {
-      return config.sdk()[0];
-    } else {
-      return manifest.getTargetSdkVersion();
-    }
+  // todo: do we need to preserve pickSdkVersion(Config config, AndroidManifest manifest)?
+  protected int pickSdkVersion(FrameworkMethod method, Config config, AndroidManifest manifest) {
+    return ((RobolectricFrameworkMethod) method).apiLevel;
+//    if (config != null && config.sdk().length > 1) {
+//      throw new IllegalArgumentException("RobolectricTestRunner does not support multiple values for @Config.sdk");
+//    } else if (config != null && config.sdk().length == 1) {
+//      return config.sdk()[0];
+//    } else {
+//      return manifest.getTargetSdkVersion();
+//    }
   }
 
   private ParallelUniverseInterface getHooksInterface(SdkEnvironment sdkEnvironment) {
@@ -595,6 +661,24 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
           }
         }
       };
+    }
+  }
+
+  class RobolectricFrameworkMethod extends FrameworkMethod {
+    final int apiLevel;
+    final Config config;
+
+    RobolectricFrameworkMethod(Method method, int apiLevel, Config config) {
+      super(method);
+      this.apiLevel = apiLevel;
+      this.config = config;
+    }
+
+    @Override
+    public String getName() {
+      // IDE focused test runs rely on preservation of the test name; we'll use the
+      //   latest supported SDK for focused test runs
+      return super.getName() + (apiLevel == SdkConfig.MAX_SDK_VERSION ? "" : "[" + apiLevel + "]");
     }
   }
 }
