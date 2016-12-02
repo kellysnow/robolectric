@@ -197,13 +197,18 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
   @Override
   protected List<FrameworkMethod> getChildren() {
     List<FrameworkMethod> children = new ArrayList<>();
+    RobolectricFrameworkMethod last = null;
     for (FrameworkMethod frameworkMethod : super.getChildren()) {
       for (final Integer apiLevel : new TreeSet<>(filterSupportedApis(supportedApis, properties))) {
         Config config = getConfig(frameworkMethod.getMethod());
         if (shouldRunApiVersion(config, apiLevel)) {
-          children.add(new RobolectricFrameworkMethod(frameworkMethod.getMethod(), apiLevel, config));
+          last = new RobolectricFrameworkMethod(frameworkMethod.getMethod(), apiLevel, config);
+          children.add(last);
         }
       }
+    }
+    if (last != null) {
+      last.dontIncludeApiLevelInName();
     }
     return children;
   }
@@ -277,6 +282,10 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
       } else if (config.minSdk() <= apiLevel && config.maxSdk() >= apiLevel) {
         return true;
       }
+    }
+
+    if (config.sdk().length == 1 && config.sdk()[0] == Config.LATEST_SDK) {
+
     }
 
     // For SDK groups
@@ -667,6 +676,7 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
   class RobolectricFrameworkMethod extends FrameworkMethod {
     final int apiLevel;
     final Config config;
+    private boolean includeApiLevelInName = true;
 
     RobolectricFrameworkMethod(Method method, int apiLevel, Config config) {
       super(method);
@@ -678,7 +688,12 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
     public String getName() {
       // IDE focused test runs rely on preservation of the test name; we'll use the
       //   latest supported SDK for focused test runs
-      return super.getName() + (apiLevel == SdkConfig.MAX_SDK_VERSION ? "" : "[" + apiLevel + "]");
+      return super.getName() +
+          (includeApiLevelInName ? "[" + apiLevel + "]" : "");
+    }
+
+    void dontIncludeApiLevelInName() {
+      includeApiLevelInName = false;
     }
   }
 }

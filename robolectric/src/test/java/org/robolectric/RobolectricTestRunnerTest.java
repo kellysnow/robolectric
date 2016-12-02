@@ -133,6 +133,16 @@ public class RobolectricTestRunnerTest {
         new int[0],  "AndroidManifest.xml", Application.class, "", "", "res", "assets", new Class[] {}, new String[]{}, new String[]{}, null);
   }
 
+  @Test
+  public void withDefaultConfig_sdksToTest_shouldBeLatestSupportedByAndroidManifest() throws Exception {
+    new RobolectricTestRunner()new Config.Builder().)
+  }
+
+  @Test
+  public void withSdkAllConfig_sdksToTest_shouldBeAllSupportedByAndroidManifest() throws Exception {
+
+  }
+
   private Config configFor(Class<?> testClass, String methodName, final Map<String, String> configProperties) throws InitializationError {
     Method info = getMethod(testClass, methodName);
     return new RobolectricTestRunner(testClass) {

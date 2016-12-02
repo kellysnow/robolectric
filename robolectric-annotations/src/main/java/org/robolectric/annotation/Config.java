@@ -41,6 +41,7 @@ public @interface Config {
   String DEFAULT_RES_FOLDER = "res";
   String DEFAULT_ASSET_FOLDER = "assets";
   String DEFAULT_BUILD_FOLDER = "build";
+  int LATEST_SDK = -2;
 
   /**
    * The Android SDK level to emulate. This value will also be set as Build.VERSION.SDK_INT.
@@ -409,7 +410,7 @@ public @interface Config {
     private String[] libraries = new String[0];
     private Class<?> constants = Void.class;
 
-    public Builder setSdk(int[] sdk) {
+    public Builder setSdk(int... sdk) {
       this.sdk = sdk;
       return this;
     }

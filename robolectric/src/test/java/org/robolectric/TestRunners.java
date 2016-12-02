@@ -28,7 +28,7 @@ public class TestRunners {
     }
   }
 
-  public static class MultiApiWithDefaults extends MultiApiRobolectricTestRunner {
+  public static class MultiApiWithDefaults extends WithDefaults {
 
     public MultiApiWithDefaults(Class<?> testClass) throws Throwable {
       super(testClass);
