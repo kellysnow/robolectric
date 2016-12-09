@@ -42,11 +42,11 @@ public abstract class XmlLoader {
     }
   }
 
-  protected void processResourceXml(FsFile xmlFile, VTDNav vtdNav, String packageName) throws Exception {
+  protected void processResourceXml(FsFile xmlFile, VTDNav vtdNav, String packageName) {
     processResourceXml(xmlFile, new XpathResourceXmlLoader.XmlNode(vtdNav), new XmlContext(packageName, xmlFile));
   }
 
-  protected abstract void processResourceXml(FsFile xmlFile, XpathResourceXmlLoader.XmlNode xmlNode, XmlContext xmlContext) throws Exception;
+  protected abstract void processResourceXml(FsFile xmlFile, XpathResourceXmlLoader.XmlNode xmlNode, XmlContext xmlContext);
 
   public static class XmlContext {
     public static final Pattern DIR_QUALIFIER_PATTERN = Pattern.compile("^[^-]+(?:-(.*))?$");

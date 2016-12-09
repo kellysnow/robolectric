@@ -2,7 +2,6 @@ package org.robolectric.res;
 
 import android.content.res.XmlResourceParser;
 import org.robolectric.res.builder.XmlBlock;
-import org.w3c.dom.Document;
 
 /**
  * Loader for xml property files.
@@ -21,7 +20,7 @@ public class XmlBlockLoader extends XmlLoader {
   }
 
   @Override
-  protected void processResourceXml(FsFile xmlFile, XpathResourceXmlLoader.XmlNode xmlNode, XmlContext xmlContext) throws Exception {
+  protected void processResourceXml(FsFile xmlFile, XpathResourceXmlLoader.XmlNode xmlNode, XmlContext xmlContext) {
     XmlBlock block = XmlBlock.create(parse(xmlFile), xmlFile.getPath(), xmlContext.packageName);
     resBundle.put(attrType, xmlFile.getBaseName(), new TypedResource<>(block, null, xmlContext));
   }

@@ -1,8 +1,14 @@
 package org.robolectric.res;
 
+import com.ximpleware.EOFException;
+import com.ximpleware.EncodingException;
+import com.ximpleware.EntityException;
+import com.ximpleware.ParseException;
 import com.ximpleware.VTDGen;
 import com.ximpleware.VTDNav;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
 
 public class DocumentLoader {
   private static final FsFile.Filter ENDS_WITH_XML = new FsFile.Filter() {
@@ -21,7 +27,7 @@ public class DocumentLoader {
     vtdGen = new VTDGen();
   }
 
-  public void load(String folderBaseName, XmlLoader... xmlLoaders) throws Exception {
+  public void load(String folderBaseName, XmlLoader... xmlLoaders) {
     FsFile[] files = resourceBase.listFiles(new StartsWithFilter(folderBaseName));
     if (files == null) {
       throw new RuntimeException(resourceBase.join(folderBaseName) + " is not a directory");
@@ -31,7 +37,7 @@ public class DocumentLoader {
     }
   }
 
-  private void loadFile(FsFile dir, XmlLoader[] xmlLoaders) throws Exception {
+  private void loadFile(FsFile dir, XmlLoader[] xmlLoaders) {
     if (!dir.exists()) {
       throw new RuntimeException("no such directory " + dir);
     }
@@ -41,18 +47,22 @@ public class DocumentLoader {
     }
   }
 
-  private void loadResourceXmlFile(FsFile fsFile, XmlLoader... xmlLoaders) throws Exception {
+  private void loadResourceXmlFile(FsFile fsFile, XmlLoader... xmlLoaders) {
     VTDNav vtdNav = parse(fsFile);
     for (XmlLoader xmlLoader : xmlLoaders) {
       xmlLoader.processResourceXml(fsFile, vtdNav, packageName);
     }
   }
 
-  private VTDNav parse(FsFile xmlFile) throws Exception {
-    byte[] bytes = xmlFile.getBytes();
-    vtdGen.setDoc(bytes);
-    vtdGen.parse(true);
+  private VTDNav parse(FsFile xmlFile) {
+    try {
+      byte[] bytes = xmlFile.getBytes();
+      vtdGen.setDoc(bytes);
+      vtdGen.parse(true);
 
-    return vtdGen.getNav();
+      return vtdGen.getNav();
+    } catch (Exception e) {
+      throw new RuntimeException("Error parsing " + xmlFile, e);
+    }
   }
 }
