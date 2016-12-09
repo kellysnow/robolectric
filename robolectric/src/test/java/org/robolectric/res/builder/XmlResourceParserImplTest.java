@@ -66,7 +66,7 @@ public class XmlResourceParserImplTest {
     ResourceIndex resourceIndex = new ResourceExtractor(testResources());
     resourceLoader = mock(ResourceLoader.class);
     when(resourceLoader.getResourceIndex()).thenReturn(resourceIndex);
-    parser = (XmlResourceParserImpl) ResourceParser.from(xmlBlock, TEST_PACKAGE, resourceLoader);
+    parser = (XmlResourceParserImpl) xmlBlock.createXmlResourceParser(TEST_PACKAGE, resourceLoader);
   }
 
   @After
