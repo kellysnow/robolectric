@@ -1,7 +1,5 @@
 package org.robolectric.res;
 
-import javax.xml.xpath.XPathExpressionException;
-
 public class ValueResourceLoader extends XpathResourceXmlLoader {
   private final ResBunch resBunch;
   private final String attrType;
@@ -15,7 +13,7 @@ public class ValueResourceLoader extends XpathResourceXmlLoader {
   }
 
   @Override
-  protected void processResourceXml(FsFile xmlFile, XmlNode xmlNode, XmlContext xmlContext) throws Exception {
+  protected void processResourceXml(FsFile xmlFile, XmlNode xmlNode, XmlContext xmlContext) {
     super.processResourceXml(xmlFile, xmlNode, xmlContext);
 
 //    if (arraysToo) {
@@ -32,7 +30,7 @@ public class ValueResourceLoader extends XpathResourceXmlLoader {
   }
 
   @Override
-  protected void processNode(String name, XmlNode xmlNode, XmlContext xmlContext) throws XPathExpressionException {
+  protected void processNode(String name, XmlNode xmlNode, XmlContext xmlContext) {
     resBunch.put(attrType, name, resType.getValueWithType(xmlNode, xmlContext));
   }
 }

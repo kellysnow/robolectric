@@ -1,7 +1,5 @@
 package org.robolectric.res;
 
-import javax.xml.xpath.XPathExpressionException;
-
 public class StyleResourceLoader extends XpathResourceXmlLoader {
   private final ResBunch data;
 
@@ -11,7 +9,7 @@ public class StyleResourceLoader extends XpathResourceXmlLoader {
   }
 
   @Override
-  protected void processNode(String name, XmlNode xmlNode, XmlContext xmlContext) throws XPathExpressionException {
+  protected void processNode(String name, XmlNode xmlNode, XmlContext xmlContext) {
     String styleName = xmlNode.getAttrValue("name");
     String styleParent = xmlNode.getAttrValue("parent");
     if (styleParent == null) {
