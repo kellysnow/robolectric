@@ -13,10 +13,13 @@ import org.robolectric.annotation.Config;
 import org.robolectric.internal.ParallelUniverse;
 import org.robolectric.internal.SdkConfig;
 import org.robolectric.manifest.AndroidManifest;
-import org.robolectric.res.EmptyResourceLoader;
+import org.robolectric.res.EmptyResourceProvider;
 import org.robolectric.res.ResourceExtractor;
-import org.robolectric.res.ResourceLoader;
+import org.robolectric.res.ResourceIndex;
+import org.robolectric.res.ResourceProvider;
 import org.robolectric.res.ResourcePath;
+import org.robolectric.res.ResourceTable;
+import org.robolectric.res.RoutingResourceProvider;
 import org.robolectric.res.builder.RobolectricPackageManager;
 import org.robolectric.shadows.ShadowApplication;
 import org.robolectric.shadows.ShadowLooper;
@@ -46,10 +49,17 @@ public class ParallelUniverseTest {
   }
 
   private void setUpApplicationState(Config defaultConfig) {
-    ResourceLoader sdkResourceLoader = new EmptyResourceLoader("android", new ResourceExtractor(new ResourcePath(android.R.class, "android", null, null)));
-    pu.setUpApplicationState(null, new DefaultTestLifecycle(), sdkResourceLoader, RuntimeEnvironment.getSystemResourceLoader(),
-        new EmptyResourceLoader("package", new ResourceExtractor(new ResourcePath(org.robolectric.R.class, "package", null, null))),
-        new AndroidManifest(null, null, null, "package"), defaultConfig);
+    ResourceIndex androidResourceIndex = new ResourceIndex("android");
+    ResourceExtractor.populate(new ResourcePath(android.R.class, "android", null, null), androidResourceIndex);
+    ResourceProvider sdkResourceProvider = new EmptyResourceProvider("android", androidResourceIndex);
+    ResourceIndex resourceIndex = new ResourceIndex("android");
+    ResourceExtractor.populate(new ResourcePath(R.class, "package", null, null), resourceIndex);
+    final RoutingResourceProvider routingResourceProvider = new RoutingResourceProvider(new ResourceTable(resourceIndex));
+    pu.setUpApplicationState(null, new DefaultTestLifecycle(),
+        new AndroidManifest(null, null, null, "package"), defaultConfig,
+        sdkResourceProvider,
+        routingResourceProvider,
+        RuntimeEnvironment.getSystemResourceProvider());
   }
 
   @Test

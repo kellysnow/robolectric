@@ -8,7 +8,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadDrawableXmlResources() throws Exception {
-    PackageResourceLoader loader = new PackageResourceLoader(testResources());
+    PackageResourceProvider loader = new PackageResourceProvider(testResources());
     TypedResource value = loader.getValue(new ResName("org.robolectric", "drawable", "rainbow"), "");
     assertThat(value).isNotNull();
     assertThat(value.getResType()).isEqualTo(ResType.DRAWABLE);
@@ -18,7 +18,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadDrawableBitmapResources() throws Exception {
-    PackageResourceLoader loader = new PackageResourceLoader(testResources());
+    PackageResourceProvider loader = new PackageResourceProvider(testResources());
     TypedResource value = loader.getValue(new ResName("org.robolectric", "drawable", "an_image"), "");
     assertThat(value).isNotNull();
     assertThat(value.getResType()).isEqualTo(ResType.DRAWABLE);
@@ -28,7 +28,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadDrawableBitmapResourcesDefinedByItemTag() throws Exception {
-    PackageResourceLoader loader = new PackageResourceLoader(testResources());
+    PackageResourceProvider loader = new PackageResourceProvider(testResources());
     TypedResource value = loader.getValue(new ResName("org.robolectric", "drawable", "example_item_drawable"), "");
     assertThat(value).isNotNull();
     assertThat(value.getResType()).isEqualTo(ResType.DRAWABLE);
@@ -38,7 +38,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadResourcesFromGradleOutputDirectories() {
-    PackageResourceLoader loader = new PackageResourceLoader(gradleAppResources());
+    PackageResourceProvider loader = new PackageResourceProvider(gradleAppResources());
     TypedResource value = loader.getValue(org.robolectric.gradleapp.R.string.from_gradle_output, "");
     assertThat(value).describedAs("String from gradle output is not loaded").isNotNull();
     assertThat(value.asString()).isEqualTo("string example taken from gradle output directory");
@@ -46,7 +46,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadDimenResourcesFromGradleOutputDirectoriesDefinedByDimenTag() {
-    PackageResourceLoader loader = new PackageResourceLoader(gradleAppResources());
+    PackageResourceProvider loader = new PackageResourceProvider(gradleAppResources());
     TypedResource value = loader.getValue(org.robolectric.gradleapp.R.dimen.example_dimen, "");
     assertThat(value).describedAs("Dimen from gradle output is not loaded").isNotNull();
     assertThat(value.asString()).isEqualTo("8dp");
@@ -54,7 +54,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadDimenResourcesFromGradleOutputDirectoriesDefinedByItemTag() {
-    PackageResourceLoader loader = new PackageResourceLoader(gradleAppResources());
+    PackageResourceProvider loader = new PackageResourceProvider(gradleAppResources());
     TypedResource value = loader.getValue(org.robolectric.gradleapp.R.dimen.example_item_dimen, "");
     assertThat(value).describedAs("Item dimen from gradle output is not loaded").isNotNull();
     assertThat(value.asString()).isEqualTo("3.14");
@@ -62,7 +62,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadStringResourcesFromGradleOutputDirectoriesDefinedByItemTag() {
-    PackageResourceLoader loader = new PackageResourceLoader(gradleAppResources());
+    PackageResourceProvider loader = new PackageResourceProvider(gradleAppResources());
     TypedResource value = loader.getValue(org.robolectric.gradleapp.R.string.item_from_gradle_output, "");
     assertThat(value).describedAs("Item string from gradle output is not loaded").isNotNull();
     assertThat(value.asString()).isEqualTo("3.14");
@@ -70,7 +70,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadColorResourcesFromGradleOutputDirectoriesDefinedByColorTag() {
-    PackageResourceLoader loader = new PackageResourceLoader(gradleAppResources());
+    PackageResourceProvider loader = new PackageResourceProvider(gradleAppResources());
     TypedResource value = loader.getValue(org.robolectric.gradleapp.R.color.example_color, "");
     assertThat(value).describedAs("Color from gradle output is not loaded").isNotNull();
     assertThat(value.asString()).isEqualTo("#00FF00FF");
@@ -78,7 +78,7 @@ public class PackageResourceLoaderTest {
 
   @Test
   public void shouldLoadColorResourcesFromGradleOutputDirectoriesDefinedByItemTag() {
-    PackageResourceLoader loader = new PackageResourceLoader(gradleAppResources());
+    PackageResourceProvider loader = new PackageResourceProvider(gradleAppResources());
     TypedResource value = loader.getValue(org.robolectric.gradleapp.R.color.example_item_color, "");
     assertThat(value).describedAs("Item color from gradle output is not loaded").isNotNull();
     assertThat(value.asString()).isEqualTo("1.0");

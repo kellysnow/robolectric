@@ -1,7 +1,5 @@
 package org.robolectric.res;
 
-import java.util.Arrays;
-import java.util.Collection;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +36,7 @@ public class OverlayResourceIndexTest {
     private final String packageName;
 
     private DummyResourceIndex(String packageName, ResName resName, Integer value) {
+      super(packageName);
       this.packageName = packageName;
       resourceNameToId.put(resName, value);
     }
@@ -48,10 +47,6 @@ public class OverlayResourceIndexTest {
 
     @Override public ResName getResName(int resourceId) {
       return null;
-    }
-
-    @Override public Collection<String> getPackages() {
-      return Arrays.asList(packageName);
     }
   }
 }

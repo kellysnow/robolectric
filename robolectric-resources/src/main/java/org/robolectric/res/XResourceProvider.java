@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 // TODO: Give me a better name
-abstract class XResourceLoader extends ResourceLoader {
+abstract class XResourceProvider extends ResourceProvider {
   final ResBunch data = new ResBunch();
   final ResBundle xmlDocuments = new ResBundle();
   final ResBundle rawResources = new ResBundle();
@@ -15,7 +15,7 @@ abstract class XResourceLoader extends ResourceLoader {
   private final ResourceIndex resourceIndex;
   private boolean isInitialized = false;
 
-  XResourceLoader(ResourceIndex resourceIndex) {
+  XResourceProvider(ResourceIndex resourceIndex) {
     this.resourceIndex = resourceIndex;
   }
 
@@ -36,30 +36,6 @@ abstract class XResourceLoader extends ResourceLoader {
     rawResources.makeImmutable();
   }
 
-  public TypedResource getValue(@NotNull ResName resName, String qualifiers) {
-    initialize();
-    return data.get(resName, qualifiers);
-  }
-
-  @Override
-  public XmlBlock getXml(ResName resName, String qualifiers) {
-    initialize();
-    TypedResource typedResource = xmlDocuments.get(resName, qualifiers);
-    return typedResource == null ? null : (XmlBlock) typedResource.getData();
-  }
-
-  @Override
-  public InputStream getRawValue(ResName resName, String qualifiers) {
-    initialize();
-
-    TypedResource typedResource = rawResources.get(resName, qualifiers);
-    FsFile file = typedResource == null ? null : (FsFile) typedResource.getData();
-    try {
-      return file == null ? null : file.getInputStream();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   @Override
   public ResourceIndex getResourceIndex() {

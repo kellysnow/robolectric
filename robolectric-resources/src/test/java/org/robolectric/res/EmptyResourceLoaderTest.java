@@ -11,7 +11,7 @@ public class EmptyResourceLoaderTest {
   @Test
   public void shouldProvideForNameSpace() throws Exception {
 
-    EmptyResourceLoader resourceLoader = new EmptyResourceLoader("android", null);
+    EmptyResourceProvider resourceLoader = new EmptyResourceProvider("android", null);
     assertThat(resourceLoader.providesFor("android")).isTrue();
     assertThat(resourceLoader.providesFor("org.robolectric")).isFalse();
   }

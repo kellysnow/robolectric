@@ -1,15 +1,25 @@
 package org.robolectric.res;
 
+import org.jetbrains.annotations.NotNull;
+import org.robolectric.res.builder.XmlBlock;
 import org.robolectric.util.Logger;
 
-public class PackageResourceLoader extends XResourceLoader {
+import java.io.InputStream;
+
+public class PackageResourceProvider extends XResourceProvider {
   private final ResourcePath resourcePath;
 
-  public PackageResourceLoader(ResourcePath resourcePath) {
-    this(resourcePath, new ResourceExtractor(resourcePath));
+  public PackageResourceProvider(ResourcePath resourcePath) {
+    this(resourcePath, createResourceIndex(resourcePath));
   }
 
-  public PackageResourceLoader(ResourcePath resourcePath, ResourceIndex resourceIndex) {
+  private static ResourceIndex createResourceIndex(ResourcePath resourcePath) {
+    ResourceIndex resourceIndex = new ResourceIndex(resourcePath.getPackageName());
+    ResourceExtractor.populate(resourcePath, resourceIndex);
+    return resourceIndex;
+  }
+
+  public PackageResourceProvider(ResourcePath resourcePath, ResourceIndex resourceIndex) {
     super(resourceIndex);
     this.resourcePath = resourcePath;
   }
@@ -68,7 +78,22 @@ public class PackageResourceLoader extends XResourceLoader {
 
   @Override
   public String toString() {
-    return "PackageResourceLoader{" + resourcePath.getPackageName() + '}';
+    return "PackageResourceProvider{" + resourcePath.getPackageName() + '}';
+  }
+
+  @Override
+  public TypedResource getValue(@NotNull ResName resName, String qualifiers) {
+    return null;
+  }
+
+  @Override
+  public XmlBlock getXml(ResName resName, String qualifiers) {
+    return null;
+  }
+
+  @Override
+  public InputStream getRawValue(ResName resName) {
+    return null;
   }
 
   @Override public boolean providesFor(String namespace) {

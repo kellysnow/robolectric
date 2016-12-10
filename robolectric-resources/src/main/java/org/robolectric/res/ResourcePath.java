@@ -31,6 +31,10 @@ public class ResourcePath {
     return resourceBase;
   }
 
+  public boolean hasResources() {
+    return getResourceBase() != null;
+  }
+
   public FsFile getAssetsDir() {
     return assetsDir;
   }

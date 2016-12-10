@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public abstract class ResourceLoader {
+public abstract class ResourceProvider {
 
   public abstract TypedResource getValue(@NotNull ResName resName, String qualifiers);
 

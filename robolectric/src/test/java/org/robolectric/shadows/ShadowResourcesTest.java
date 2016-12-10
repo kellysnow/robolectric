@@ -525,7 +525,7 @@ public class ShadowResourcesTest {
   @Test
   public void obtainStyledAttributesShouldCheckXmlFirst() throws Exception {
 
-    // This simulates a ResourceLoader built from a 21+ SDK as viewportHeight / viewportWidth were introduced in API 21
+    // This simulates a ResourceProvider built from a 21+ SDK as viewportHeight / viewportWidth were introduced in API 21
     // but the public ID values they are assigned clash with private com.android.internal.R values on older SDKs. This
     // test ensures that even on older SDKs, on calls to obtainStyledAttributes() Robolectric will first check for matching
     // resource ID values in the AttributeSet before checking the theme.
@@ -547,7 +547,7 @@ public class ShadowResourcesTest {
   @Test
   public void obtainStyledAttributesShouldCheckXmlFirst_andFollowReferences() throws Exception {
 
-    // This simulates a ResourceLoader built from a 21+ SDK as viewportHeight / viewportWidth were introduced in API 21
+    // This simulates a ResourceProvider built from a 21+ SDK as viewportHeight / viewportWidth were introduced in API 21
     // but the public ID values they are assigned clash with private com.android.internal.R values on older SDKs. This
     // test ensures that even on older SDKs, on calls to obtainStyledAttributes() Robolectric will first check for matching
     // resource ID values in the AttributeSet before checking the theme.

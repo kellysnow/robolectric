@@ -46,7 +46,7 @@ public class ResBunch {
     }
   }
 
-  public void receive(ResourceLoader.Visitor visitor) {
+  public void receive(ResourceProvider.Visitor visitor) {
     for (ResBundle resBundle : types.values()) {
       resBundle.receive(visitor);
     }

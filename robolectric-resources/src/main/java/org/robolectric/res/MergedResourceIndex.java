@@ -1,6 +1,5 @@
 package org.robolectric.res;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -10,9 +9,11 @@ public class MergedResourceIndex extends ResourceIndex {
   private final Set<String> actualPackageNames = new HashSet<>();
 
   public MergedResourceIndex(ResourceIndex... subIndexes) {
+    super("");
+
     this.subIndexes = subIndexes;
     for (ResourceIndex subIndex : subIndexes) {
-      actualPackageNames.addAll(subIndex.getPackages());
+//      actualPackageNames.addAll(subIndex.getPackages());
       merge(resourceNameToId, subIndex.resourceNameToId, "resourceNameToId");
       merge(resourceIdToResName, subIndex.resourceIdToResName, "resourceIdToResName");
     }
@@ -50,9 +51,5 @@ public class MergedResourceIndex extends ResourceIndex {
       }
     }
     return resName;
-  }
-
-  @Override public Collection<String> getPackages() {
-    return actualPackageNames;
   }
 }

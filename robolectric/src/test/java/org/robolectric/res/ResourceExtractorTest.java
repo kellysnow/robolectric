@@ -4,6 +4,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.robolectric.R;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.robolectric.util.TestUtil.*;
 
@@ -12,9 +13,12 @@ public class ResourceExtractorTest {
 
   @Before
   public void setUp() throws Exception {
-    resourceIndex = new MergedResourceIndex(
-        new ResourceExtractor(testResources()),
-        new ResourceExtractor(systemResources()));
+    resourceIndex = ResourceMerger.buildResourceTable("app", testResources(), asList(systemResources(), testResources())).getResourceIndex();
+    ResourceIndex resourceIndex1 = new ResourceIndex("app");
+    ResourceExtractor.populate(systemResources(), resourceIndex1);
+    ResourceIndex resourceIndex2 = new ResourceIndex("lib");
+    ResourceExtractor.populate(testResources(), resourceIndex2);
+    resourceIndex = new MergedResourceIndex(resourceIndex2, resourceIndex1);
   }
 
   @Test
@@ -49,13 +53,23 @@ public class ResourceExtractorTest {
 
   @Test
   public void shouldResolveEquivalentResNames() throws Exception {
+    ResourceIndex resourceIndex2 = new ResourceIndex("packageName");
+    ResourceExtractor.populate(lib3Resources(), resourceIndex2);
+    ResourceIndex resourceIndex3 = new ResourceIndex("packageName");
+    ResourceExtractor.populate(lib2Resources(), resourceIndex3);
+    ResourceIndex resourceIndex4 = new ResourceIndex("packageName");
+    ResourceExtractor.populate(lib1Resources(), resourceIndex4);
+    ResourceIndex resourceIndex5 = new ResourceIndex("packageName");
+    ResourceExtractor.populate(testResources(), resourceIndex5);
     OverlayResourceIndex overlayResourceIndex = new OverlayResourceIndex(
         "org.robolectric",
-        new ResourceExtractor(testResources()),
-        new ResourceExtractor(lib1Resources()),
-        new ResourceExtractor(lib2Resources()),
-        new ResourceExtractor(lib3Resources()));
-    resourceIndex = new MergedResourceIndex(overlayResourceIndex, new ResourceExtractor(systemResources()));
+        resourceIndex5,
+        resourceIndex4,
+        resourceIndex3,
+        resourceIndex2);
+    ResourceIndex resourceIndex1 = new ResourceIndex("packageName");
+    ResourceExtractor.populate(systemResources(), resourceIndex1);
+    resourceIndex = new MergedResourceIndex(overlayResourceIndex, resourceIndex1);
 
     assertThat(resourceIndex.getResourceId(new ResName("org.robolectric", "string", "in_all_libs"))).isEqualTo(R.string.in_all_libs);
     assertThat(resourceIndex.getResourceId(new ResName("org.robolectric.lib1", "string", "in_all_libs"))).isEqualTo(R.string.in_all_libs);

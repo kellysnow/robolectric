@@ -40,17 +40,16 @@ import org.robolectric.internal.dependency.LocalDependencyResolver;
 import org.robolectric.internal.dependency.MavenDependencyResolver;
 import org.robolectric.internal.dependency.PropertiesDependencyResolver;
 import org.robolectric.manifest.AndroidManifest;
-import org.robolectric.res.EmptyResourceLoader;
 import org.robolectric.res.Fs;
 import org.robolectric.res.FsFile;
-import org.robolectric.res.OverlayResourceLoader;
-import org.robolectric.res.PackageResourceLoader;
 import org.robolectric.res.ResourceExtractor;
-import org.robolectric.res.ResourceLoader;
+import org.robolectric.res.ResourceIndex;
+import org.robolectric.res.ResourceMerger;
+import org.robolectric.res.ResourceProvider;
 import org.robolectric.res.ResourcePath;
-import org.robolectric.res.RoutingResourceLoader;
+import org.robolectric.res.ResourceTable;
+import org.robolectric.res.RoutingResourceProvider;
 import org.robolectric.util.Logger;
-import org.robolectric.util.Pair;
 import org.robolectric.util.ReflectionHelpers;
 
 import java.io.File;
@@ -74,13 +73,13 @@ import static com.google.common.collect.Lists.reverse;
 
 /**
  * Installs a {@link org.robolectric.internal.bytecode.InstrumentingClassLoader} and
- * {@link org.robolectric.res.ResourceLoader} in order to provide a simulation of the Android runtime environment.
+ * {@link ResourceProvider} in order to provide a simulation of the Android runtime environment.
  */
 public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
   private static final String CONFIG_PROPERTIES = "robolectric.properties";
-  private static final Map<AndroidManifest, ResourceLoader> appResourceLoaderCache = new HashMap<>();
+  private static final Map<AndroidManifest, ResourceTable> appResourceTableCache = new HashMap<>();
   private static final Map<ManifestIdentifier, AndroidManifest> appManifestsCache = new HashMap<>();
-  private static ResourceLoader compiletimeSdkResourceLoader;
+  private static ResourceTable compiletimeSdkResourceTable;
 
   private TestLifecycle<Application> testLifecycle;
   private DependencyResolver dependencyResolver;
@@ -219,14 +218,17 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
   }
 
   /**
-   * Returns the ResourceLoader for the compile time SDK.
+   * Returns the ResourceProvider for the compile time SDK.
    */
   @NotNull
-  private static ResourceLoader getCompiletimeSdkResourceLoader() {
-    if (compiletimeSdkResourceLoader == null) {
-      compiletimeSdkResourceLoader = new EmptyResourceLoader("android", new ResourceExtractor(new ResourcePath(android.R.class, "android", null, null)));
+  private static ResourceTable getCompiletimeSdkResourceTable() {
+    if (compiletimeSdkResourceTable == null) {
+      String androidPackage = "android";
+      ResourceIndex resourceIndex = new ResourceIndex(androidPackage);
+      ResourceExtractor.populate(new ResourcePath(android.R.class, androidPackage, null, null), resourceIndex);
+      compiletimeSdkResourceTable = new ResourceTable(resourceIndex);
     }
-    return compiletimeSdkResourceLoader;
+    return compiletimeSdkResourceTable;
   }
 
   protected boolean shouldRunApiVersion(Config config) {
@@ -279,10 +281,10 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
             SdkConfig sdkConfig = new SdkConfig(sdkVersion);
             ReflectionHelpers.setStaticField(androidBuildVersionClass, "RELEASE", sdkConfig.getAndroidVersion());
 
-            ResourceLoader systemResourceLoader = sdkEnvironment.getSystemResourceLoader(getJarResolver());
-            ResourceLoader appResourceLoader = getAppResourceLoader(appManifest);
+            ResourceTable systemResourceTable = sdkEnvironment.getSystemResourceTable(getJarResolver());
+            ResourceTable appResourceTable = getAppResourceTable(appManifest);
 
-            parallelUniverseInterface.setUpApplicationState(bootstrappedMethod, testLifecycle, getCompiletimeSdkResourceLoader(), systemResourceLoader, appResourceLoader, appManifest, config);
+            parallelUniverseInterface.setUpApplicationState(bootstrappedMethod, testLifecycle, appManifest, config, new RoutingResourceProvider(getCompiletimeSdkResourceTable(), appResourceTable), new RoutingResourceProvider(systemResourceTable, appResourceTable), new RoutingResourceProvider(systemResourceTable));
             testLifecycle.beforeTest(bootstrappedMethod);
           } catch (Exception e) {
             throw new RuntimeException(e);
@@ -537,17 +539,14 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner {
     throw new UnsupportedOperationException("this should always be invoked on the HelperTestRunner!");
   }
 
-  private final ResourceLoader getAppResourceLoader(final AndroidManifest appManifest) {
-    ResourceLoader resourceLoader = appResourceLoaderCache.get(appManifest);
-    if (resourceLoader == null) {
-      List<PackageResourceLoader> appAndLibraryResourceLoaders = new ArrayList<>();
-      for (ResourcePath resourcePath : appManifest.getIncludedResourcePaths()) {
-        appAndLibraryResourceLoaders.add(new PackageResourceLoader(resourcePath, new ResourceExtractor(resourcePath)));
-      }
-      resourceLoader = new OverlayResourceLoader(appManifest.getPackageName(), appAndLibraryResourceLoaders);
-      appResourceLoaderCache.put(appManifest, resourceLoader);
+  private final ResourceTable getAppResourceTable(final AndroidManifest appManifest) {
+    ResourceTable resourceTable = appResourceTableCache.get(appManifest);
+    if (resourceTable == null) {
+      resourceTable = ResourceMerger.buildResourceTable(appManifest);
+
+      appResourceTableCache.put(appManifest, resourceTable);
     }
-    return resourceLoader;
+    return resourceTable;
   }
 
   protected ShadowMap createShadowMap() {

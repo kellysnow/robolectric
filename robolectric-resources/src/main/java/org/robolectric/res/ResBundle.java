@@ -103,7 +103,7 @@ public class ResBundle {
     valuesMap.merge(packageName, fromResBundle.valuesMap);
   }
 
-  public void receive(ResourceLoader.Visitor visitor) {
+  public void receive(ResourceProvider.Visitor visitor) {
     for (final Map.Entry<ResName, List<TypedResource>> entry : valuesMap.map.entrySet()) {
       visitor.visit(entry.getKey(), new AbstractList<TypedResource>() {
         List<TypedResource> typedResources;
