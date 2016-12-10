@@ -17,6 +17,7 @@ import org.robolectric.annotation.RealObject;
 import org.robolectric.annotation.Resetter;
 import org.robolectric.res.*;
 import org.robolectric.res.builder.XmlBlock;
+import org.robolectric.res.builder.XmlResourceParserImpl;
 import org.robolectric.util.Logger;
 import org.robolectric.util.ReflectionHelpers;
 
@@ -52,7 +53,7 @@ public final class ShadowAssetManager {
 
   private static long nextInternalThemeId = 1000;
   private static final Map<Long, NativeTheme> nativeThemes = new HashMap<>();
-  private ResourceLoader resourceLoader;
+  private ResourceProvider resourceProvider;
 
   class NativeTheme {
     private ThemeStyleSet themeStyleSet;
@@ -94,7 +95,7 @@ public final class ShadowAssetManager {
       if (attribute.getReferenceResId() != null) {
         resourceId = attribute.getReferenceResId();
       } else {
-        resourceId = resourceLoader.getResourceIndex().getResourceId(resName);
+        resourceId = resourceProvider.getResourceIndex().getResourceId(resName);
       }
 
       if (resourceId == null) {
@@ -109,7 +110,7 @@ public final class ShadowAssetManager {
 
       outValue.resourceId = resourceId;
 
-      TypedResource dereferencedRef = resourceLoader.getValue(resName, qualifiers);
+      TypedResource dereferencedRef = resourceProvider.getValue(resName, qualifiers);
 
       if (dereferencedRef == null) {
         Logger.strict("couldn't resolve %s from %s", resName.getFullyQualifiedName(), attribute);
@@ -130,7 +131,7 @@ public final class ShadowAssetManager {
           return;
         } else if (DrawableResourceLoader.isStillHandledHere(resName.type)) {
           // wtf. color and drawable references reference are all kinds of stupid.
-          TypedResource drawableResource = resourceLoader.getValue(resName, qualifiers);
+          TypedResource drawableResource = resourceProvider.getValue(resName, qualifiers);
           if (drawableResource == null) {
             throw new Resources.NotFoundException("can't find file for " + resName);
           } else {
@@ -169,7 +170,7 @@ public final class ShadowAssetManager {
       return;
     }
 
-    TypedResource attrTypeData = resourceLoader.getValue(attribute.resName, qualifiers);
+    TypedResource attrTypeData = resourceProvider.getValue(attribute.resName, qualifiers);
     if (attrTypeData != null) {
       AttrData attrData = (AttrData) attrTypeData.getData();
       String format = attrData.getFormat();
@@ -190,7 +191,7 @@ public final class ShadowAssetManager {
        * KitKat runtine, then infer the attribute type from the value.
        *
        * TODO: When we are able to pass the SDK resources from the build environment then we can remove this
-       * and replace the NullResourceLoader with simple ResourceLoader that only parses attribute type information.
+       * and replace the NullResourceLoader with simple ResourceProvider that only parses attribute type information.
        */
       ResType resType = ResType.inferFromValue(attribute.value);
       Converter.getConverter(resType).fillTypedValue(attribute.value, outValue);
@@ -198,15 +199,15 @@ public final class ShadowAssetManager {
   }
 
   public void __constructor__() {
-    resourceLoader = RuntimeEnvironment.getAppResourceLoader();
+    resourceProvider = RuntimeEnvironment.getAppResourceProvider();
   }
 
   public void __constructor__(boolean isSystem) {
-    resourceLoader = isSystem ? RuntimeEnvironment.getSystemResourceLoader() : RuntimeEnvironment.getAppResourceLoader();
+    resourceProvider = isSystem ? RuntimeEnvironment.getSystemResourceProvider() : RuntimeEnvironment.getAppResourceProvider();
   }
 
-  public ResourceLoader getResourceLoader() {
-    return resourceLoader;
+  public ResourceProvider getResourceProvider() {
+    return resourceProvider;
   }
 
   @HiddenApi @Implementation
@@ -238,11 +239,11 @@ public final class ShadowAssetManager {
 
     // If the resource does not exist then return 0, otherwise ResourceIndex.getResourceId() will generate a placeholder.
     if (!ResName.ID_TYPE.equals(resName.type)
-        && !resourceLoader.hasValue(resName, RuntimeEnvironment.getQualifiers())) {
+        && !resourceProvider.hasValue(resName, RuntimeEnvironment.getQualifiers())) {
       return 0;
     }
 
-    Integer resourceId = resourceLoader.getResourceIndex().getResourceId(resName);
+    Integer resourceId = resourceProvider.getResourceIndex().getResourceId(resName);
     return resourceId == null ? 0 : resourceId;
   }
 
@@ -284,7 +285,7 @@ public final class ShadowAssetManager {
 
   @HiddenApi @Implementation(minSdk = LOLLIPOP)
   public boolean getThemeValue(long themePtr, int ident, TypedValue outValue, boolean resolveRefs) {
-    ResourceIndex resourceIndex = resourceLoader.getResourceIndex();
+    ResourceIndex resourceIndex = resourceProvider.getResourceIndex();
     ResName resName = resourceIndex.getResName(ident);
 
     ThemeStyleSet themeStyleSet = getNativeTheme(themePtr).themeStyleSet;
@@ -339,7 +340,7 @@ public final class ShadowAssetManager {
     final ResName resName = qualifyFromNonAssetFileName(fileName);
 
     final FileTypedResource typedResource =
-        (FileTypedResource) resourceLoader.getValue(resName, RuntimeEnvironment.getQualifiers());
+        (FileTypedResource) resourceProvider.getValue(resName, RuntimeEnvironment.getQualifiers());
 
     if (typedResource == null) {
       throw new IOException("Unable to find resource for " + fileName);
@@ -368,7 +369,7 @@ public final class ShadowAssetManager {
 
   @Implementation
   public final XmlResourceParser openXmlResourceParser(int cookie, String fileName) throws IOException {
-    return XmlBlock.create(fileName, "fixme").createXmlResourceParser("fixme", null);
+    return getXmlResourceParser(null, XmlBlock.create(fileName, "fixme"), "fixme");
   }
 
   public XmlResourceParser loadXmlResourceParser(int resId, String type) throws Resources.NotFoundException {
@@ -379,13 +380,18 @@ public final class ShadowAssetManager {
     }
     resName = resolvedResName;
 
-    ResourceLoader resourceLoader = ResourceIds.isFrameworkResource(resId) ? RuntimeEnvironment.getSystemResourceLoader() : RuntimeEnvironment.getCompiletimeResourceLoader();
-    XmlBlock block = resourceLoader.getXml(resName, RuntimeEnvironment.getQualifiers());
+    ResourceProvider resourceProvider = ResourceIds.isFrameworkResource(resId) ? RuntimeEnvironment.getSystemResourceProvider() : RuntimeEnvironment.getCompiletimeResourceProvider();
+    XmlBlock block = resourceProvider.getXml(resName, RuntimeEnvironment.getQualifiers());
     if (block == null) {
       throw new Resources.NotFoundException(resName.getFullyQualifiedName());
     }
 
-    return block.createXmlResourceParser(resName.packageName, resourceLoader);
+    return getXmlResourceParser(resourceProvider, block, resName.packageName);
+  }
+
+  private XmlResourceParser getXmlResourceParser(ResourceProvider resourceProvider, XmlBlock block, String packageName) {
+    return new XmlResourceParserImpl(block.getDocument(), block.getFilename(), block.getPackageName(),
+        packageName, resourceProvider);
   }
 
   @HiddenApi @Implementation
@@ -495,17 +501,17 @@ public final class ShadowAssetManager {
   }
 
   private Style resolveStyle(@NotNull ResName themeStyleName, Style themeStyleSet) {
-    TypedResource themeStyleResource = resourceLoader.getValue(themeStyleName, RuntimeEnvironment.getQualifiers());
+    TypedResource themeStyleResource = resourceProvider.getValue(themeStyleName, RuntimeEnvironment.getQualifiers());
     if (themeStyleResource == null) return null;
     StyleData themeStyleData = (StyleData) themeStyleResource.getData();
     if (themeStyleSet == null) {
       themeStyleSet = new ThemeStyleSet();
     }
-    return new StyleResolver(resourceLoader, shadowOf(AssetManager.getSystem()).getResourceLoader(), themeStyleData, themeStyleSet, themeStyleName, RuntimeEnvironment.getQualifiers());
+    return new StyleResolver(resourceProvider, shadowOf(AssetManager.getSystem()).getResourceProvider(), themeStyleData, themeStyleSet, themeStyleName, RuntimeEnvironment.getQualifiers());
   }
 
   private TypedResource getAndResolve(int resId, String qualifiers, boolean resolveRefs) {
-    TypedResource value = resourceLoader.getValue(resId, qualifiers);
+    TypedResource value = resourceProvider.getValue(resId, qualifiers);
     if (resolveRefs) {
       value = resolve(value, qualifiers, resId);
     }
@@ -513,7 +519,7 @@ public final class ShadowAssetManager {
     // todo: make the drawable loader put stuff into the normal spot...
     String resourceTypeName = getResourceTypeName(resId);
     if (value == null && DrawableResourceLoader.isStillHandledHere(resourceTypeName)) {
-      FileTypedResource typedResource = (FileTypedResource) resourceLoader.getValue(resId, qualifiers);
+      FileTypedResource typedResource = (FileTypedResource) resourceProvider.getValue(resId, qualifiers);
       return new TypedResource<>(typedResource.getFsFile(), ResType.FILE, typedResource.getXmlContext());
     }
 
@@ -530,7 +536,7 @@ public final class ShadowAssetManager {
   }
 
   public ResName resolveResName(ResName resName, String qualifiers) {
-    TypedResource value = resourceLoader.getValue(resName, qualifiers);
+    TypedResource value = resourceProvider.getValue(resName, qualifiers);
     return resolveResource(value, qualifiers, resName);
   }
 
@@ -543,7 +549,7 @@ public final class ShadowAssetManager {
       } else {
         String refStr = s.substring(1).replace("+", "");
         resName = ResName.qualifyResName(refStr, resName);
-        value = resourceLoader.getValue(resName, qualifiers);
+        value = resourceProvider.getValue(resName, qualifiers);
       }
     }
 
@@ -558,7 +564,7 @@ public final class ShadowAssetManager {
       } else {
         String refStr = s.substring(1).replace("+", "");
         resName = ResName.qualifyResName(refStr, resName);
-        value = resourceLoader.getValue(resName, qualifiers);
+        value = resourceProvider.getValue(resName, qualifiers);
       }
     }
 
@@ -645,7 +651,7 @@ public final class ShadowAssetManager {
         Logger.info("huh... circular reference for %s?", attribute.resName.getFullyQualifiedName());
         return null;
       }
-      ResName resName = resourceLoader.getResourceIndex().getResName(resId);
+      ResName resName = resourceProvider.getResourceIndex().getResName(resId);
 
       AttributeResource otherAttr = themeStyleSet.getAttrValue(otherAttrName);
       if (otherAttr == null) {
@@ -727,7 +733,7 @@ public final class ShadowAssetManager {
       }
     }
 
-    ResName attrName = resourceLoader.getResourceIndex().getResName(resId);
+    ResName attrName = resourceProvider.getResourceIndex().getResName(resId);
     if (attrName == null) return null;
 
     if (styleAttrStyle != null) {
@@ -757,9 +763,11 @@ public final class ShadowAssetManager {
   }
 
   @NotNull private ResName getResName(int id) {
-    ResName resName = resourceLoader.getResourceIndex().getResName(id);
+    ResName resName = resourceProvider.getResourceIndex().getResName(id);
     if (resName == null) {
-      List<String> packages = new ArrayList<>(resourceLoader.getResourceIndex().getPackages());
+      ArrayList<String> strings = new ArrayList<>();
+      strings.add("some package");// todo
+      List<String> packages = strings; //new ArrayList<>(resourceProvider.getResourceIndex(),);
       Collections.sort(packages);
       throw new Resources.NotFoundException("Unable to find resource ID #0x" + Integer.toHexString(id)
           + " in packages " + packages);

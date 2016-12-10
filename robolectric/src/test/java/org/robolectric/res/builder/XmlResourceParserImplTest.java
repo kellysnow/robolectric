@@ -53,7 +53,7 @@ public class XmlResourceParserImplTest {
 
   private static final String XMLNS_NS = "http://www.w3.org/2000/xmlns/";
   private XmlResourceParserImpl parser;
-  private ResourceLoader resourceLoader;
+  private ResourceProvider resourceProvider;
 
   @Before
   public void setUp() throws Exception {
@@ -63,10 +63,13 @@ public class XmlResourceParserImplTest {
 
     ResName resName = new ResName(TEST_PACKAGE, "xml", "preferences");
     XmlBlock xmlBlock = (XmlBlock) resBundle.get(resName, "").getData();
-    ResourceIndex resourceIndex = new ResourceExtractor(testResources());
-    resourceLoader = mock(ResourceLoader.class);
-    when(resourceLoader.getResourceIndex()).thenReturn(resourceIndex);
-    parser = (XmlResourceParserImpl) xmlBlock.createXmlResourceParser(TEST_PACKAGE, resourceLoader);
+    ResourceIndex resourceIndex1 = new ResourceIndex("packageName");
+    ResourceExtractor.populate(testResources(), resourceIndex1);
+    ResourceIndex resourceIndex = resourceIndex1;
+    resourceProvider = mock(ResourceProvider.class);
+    when(resourceProvider.getResourceIndex()).thenReturn(resourceIndex);
+    parser = (XmlResourceParserImpl) new XmlResourceParserImpl(xmlBlock.getDocument(), xmlBlock.getFilename(), xmlBlock.getPackageName(),
+        TEST_PACKAGE, resourceProvider);
   }
 
   @After
@@ -103,7 +106,7 @@ public class XmlResourceParserImplTest {
           new ByteArrayInputStream(xmlValue.getBytes()));
 
       parser = new XmlResourceParserImpl(document, "file", TestUtil.testResources().getPackageName(),
-          TEST_PACKAGE, resourceLoader);
+          TEST_PACKAGE, resourceProvider);
       // Navigate to the root element
       parseUntilNext(XmlResourceParser.START_TAG);
     } catch (Exception parsingException) {
